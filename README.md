@@ -42,6 +42,37 @@ D --> E[Spark Silver → Gold]
 E --> F[Parquet Gold datasets]
 F --> G[ClickHouse mart]
 ```
+## Lakehouse Layers
+
+```mermaid
+flowchart TB
+
+subgraph Bronze
+A[Raw DVF CSV files]
+end
+
+subgraph Silver
+B[Iceberg table<br>dvf_silver]
+end
+
+subgraph Gold
+C[Aggregated datasets<br>price per m²]
+end
+
+subgraph Mart
+D[ClickHouse analytical tables]
+end
+
+A --> B
+B --> C
+C --> D
+```
+| Layer      | Description                          |
+| ---------- | ------------------------------------ |
+| **Bronze** | Raw DVF ingestion from data.gouv.fr  |
+| **Silver** | Cleaned and structured Iceberg table |
+| **Gold**   | Aggregated real-estate metrics       |
+| **Mart**   | Analytical model in ClickHouse       |
 
 ## Technology Stack
 | Component  | Role                         |
@@ -119,6 +150,34 @@ MINIO_BUCKET=lake
 
 NESSIE_ENDPOINT=http://nessie:19120
 NESSIE_REF=main
+```
+
+---
+
+## Local Development
+
+Clone the repository:
+
+```bash
+git clone https://github.com/limeconsulting/immo-lakehouse.git
+cd immo-lakehouse
+```
+Create environment configuration:
+```
+cp .env.example .env
+cp .env.docker.example .env.docker
+```
+Verify environment:
+```bash
+make check
+```
+Preview pipeline execution:
+```bash
+make plan
+```
+Run the full pipeline:
+```bash
+make apply INGEST_ID=$(date -u +%Y-%m-%dT%H%M%SZ)
 ```
 ## Pipeline Workflow
 
