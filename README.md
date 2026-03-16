@@ -1,5 +1,10 @@
 # immo-lakehouse
 
+![GitHub repo size](https://img.shields.io/github/repo-size/limeconsulting/immo-lakehouse)
+![GitHub last commit](https://img.shields.io/github/last-commit/limeconsulting/immo-lakehouse)
+![GitHub license](https://img.shields.io/github/license/limeconsulting/immo-lakehouse)
+![GitHub stars](https://img.shields.io/github/stars/limeconsulting/immo-lakehouse)
+
 DVF real-estate lakehouse pipeline built with **MinIO, Nessie, Apache Spark, and ClickHouse**.
 
 This project ingests French **DVF (Demandes de Valeurs Foncières)** data, builds a **Lakehouse architecture using Iceberg**, computes aggregated metrics, and exposes them in **ClickHouse** for analytics.
