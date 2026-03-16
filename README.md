@@ -42,6 +42,45 @@ D --> E[Spark Silver → Gold]
 E --> F[Parquet Gold datasets]
 F --> G[ClickHouse mart]
 ```
+## System Architecture
+
+```mermaid
+flowchart LR
+
+subgraph Source
+    A[DVF data.gouv.fr]
+end
+
+subgraph Storage
+    B[MinIO<br/>raw / warehouse / gold]
+end
+
+subgraph Catalog
+    C[Nessie<br/>Iceberg catalog]
+end
+
+subgraph Compute
+    D[Apache Spark<br/>Bronze → Silver]
+    E[Apache Spark<br/>Silver → Gold]
+end
+
+subgraph Serving
+    F[ClickHouse<br/>Analytical mart]
+end
+
+subgraph Consumption
+    G[SQL / BI / Superset]
+end
+
+A --> B
+B --> D
+D --> C
+C --> D
+D --> E
+E --> B
+B --> F
+F --> G
+```
 ## Lakehouse Layers
 
 ```mermaid
