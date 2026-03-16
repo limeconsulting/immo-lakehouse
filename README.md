@@ -7,7 +7,30 @@ This project ingests French **DVF (Demandes de Valeurs Foncières)** data, build
 The entire pipeline is reproducible and orchestrated via a **Makefile**.
 
 ---
+## Why this architecture?
 
+DVF datasets are:
+```
+- large
+- append-only
+- analytical
+```
+A **Lakehouse architecture** allows separating:
+
+| Layer  | Role                             |
+| ------ | -------------------------------- |
+| Bronze | raw immutable ingestion          |
+| Silver | cleaned structured Iceberg table |
+| Gold   | aggregated analytical datasets   |
+| Mart   | fast OLAP queries                |
+
+This architecture combines:
+```
+- object storage scalability
+- Iceberg table versioning
+- Spark transformations
+- ClickHouse analytical performance
+```
 ## Architecture
 
 ```mermaid
@@ -20,16 +43,17 @@ E --> F[Parquet Gold datasets]
 F --> G[ClickHouse mart]
 ```
 
-## Stack
+## Technology Stack
 | Component  | Role                         |
 | ---------- | ---------------------------- |
 | MinIO      | S3-compatible object storage |
 | Nessie     | Iceberg catalog              |
-| Spark      | transformation engine        |
-| ClickHouse | analytical database          |
+| Apache Spark | transformation engine      |
+| Apache Iceberg | lakehouse table format   |
+| ClickHouse | high-performance analytical database |
 
 ## Data Lake Layout
-### MinIO bucket structure:
+MinIO bucket structure:
 ```
 lake/
 ├─ raw/
@@ -118,7 +142,7 @@ ch-load-all
 
 DVF ingestion into MinIO.
 
-Data is stored under:
+Data location:
 ```
 raw/dvf/ingest=<id>/year=YYYY/dep=XX/
 ```
@@ -139,6 +163,12 @@ Partitioning:
 dep
 annee
 ingest_id
+```
+Benefits:
+```
+- schema evolution
+- versioned tables
+- reproducible pipeline runs
 ```
 ## Gold Layer (Aggregations)
 
@@ -166,6 +196,18 @@ Derived analytical views:
 v_price_m2_commune_month
 v_price_m2_commune_year
 v_price_m2_commune_year_current
+```
+## Example Query
+
+Top communes by yearly price per m²:
+```SQL
+SELECT
+    nom_commune,
+    annee,
+    prix_m2_median_year
+FROM immo.v_price_m2_commune_year
+ORDER BY prix_m2_median_year DESC
+LIMIT 20;
 ```
 ## Cleaning / Reset
 
@@ -227,17 +269,15 @@ Configured in the Makefile:
 DEPARTMENT=40
 YEARS=2020 2021 2022 2023 2024 2025
 ```
-## Example Query
-
-Top communes by yearly price per m²:
-```SQL
-SELECT
-    nom_commune,
-    annee,
-    prix_m2_median_year
-FROM immo.v_price_m2_commune_year
-ORDER BY prix_m2_median_year DESC
-LIMIT 20;
+## Roadmap
+Possible future improvements:
+```
+- Superset dashboards
+- multi-department ingestion
+- incremental pipelines
+- Iceberg table compaction
+- historical reprocessing
+- price index per commune
 ```
 ## License
 
