@@ -120,8 +120,8 @@ ch-load:
 	ALTER TABLE immo.m_price_m2_commune_month DELETE \
 	  WHERE annee=toUInt16($(YEAR)) AND dep='$(DEPARTMENT)' AND ingest_id='$(INGEST_ID)'; \
 	INSERT INTO immo.m_price_m2_commune_month \
-	(code_commune, annee, mois, type_local, nb_ventes, prix_m2_median, prix_m2_p25, prix_m2_p75, ingest_id, dep) \
-	SELECT code_commune, annee, mois, type_local, nb_ventes, prix_m2_median, prix_m2_p25, prix_m2_p75, \
+	(code_commune, nom_commune, annee, mois, type_local, nb_ventes, prix_m2_median, prix_m2_p25, prix_m2_p75, ingest_id, dep) \
+	SELECT code_commune, nom_commune, annee, mois, type_local, nb_ventes, prix_m2_median, prix_m2_p25, prix_m2_p75, \
 	       '$(INGEST_ID)' AS ingest_id, '$(DEPARTMENT)' AS dep \
 	FROM s3( \
 	  '$(MINIO_ENDPOINT_DOCKER)/$(MINIO_BUCKET)/gold/m_price_m2_commune_month/year=$(YEAR)/dep=$(DEPARTMENT)/*.parquet', \
