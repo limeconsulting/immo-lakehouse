@@ -71,12 +71,13 @@ def main():
 
     full_table = "nessie.immo.dvf_silver"
 
-    # Create table if needed (with ingest_id)
+    # Create table if needed (with ingest_id and nom_commune)
     spark.sql(f"""
       CREATE TABLE IF NOT EXISTS {full_table} (
         date_mutation date,
         valeur_fonciere double,
         code_commune string,
+        nom_commune string,
         type_local string,
         surface_reelle_bati double,
         dep string,
@@ -87,8 +88,9 @@ def main():
       PARTITIONED BY (dep, annee, ingest_id)
     """)
 
-    # If table pre-existed without ingest_id, add it
+    # If table pre-existed without ingest_id and nom_commune, add them
     ensure_column_exists(spark, full_table, "ingest_id", "string")
+    ensure_column_exists(spark, full_table, "nom_commune", "string")
 
     bronze_glob = f"s3a://{args.bucket}/raw/dvf/ingest={args.ingest_id}/year={args.year}/dep={args.dep}/*.csv.gz"
     print(f"Reading bronze from: {bronze_glob}")
@@ -101,6 +103,7 @@ def main():
           .withColumn("valeur_fonciere", col("valeur_fonciere").cast("double"))
           .withColumn("surface_reelle_bati", col("surface_reelle_bati").cast("double"))
           .withColumn("code_commune", col("code_commune").cast("string"))
+          .withColumn("nom_commune", col("nom_commune").cast("string"))
           .withColumn("type_local", col("type_local").cast("string"))
           .withColumn("dep", col("code_departement").cast("string"))
           .withColumn("annee", col("date_mutation").substr(1, 4).cast("int"))
@@ -109,7 +112,7 @@ def main():
 
     out_df = (
         df2.select(
-            "date_mutation", "valeur_fonciere", "code_commune", "type_local",
+            "date_mutation", "valeur_fonciere", "code_commune", "nom_commune", "type_local",
             "surface_reelle_bati", "dep", "annee", "ingest_id"
         )
         .where(col("dep") == args.dep)

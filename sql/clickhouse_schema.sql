@@ -3,6 +3,7 @@ CREATE DATABASE IF NOT EXISTS immo;
 CREATE TABLE IF NOT EXISTS immo.m_price_m2_commune_month
 (
     code_commune String,
+    nom_commune String,	
     annee UInt16,
     mois UInt8,
     type_local LowCardinality(String),

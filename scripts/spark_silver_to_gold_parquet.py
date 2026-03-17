@@ -74,7 +74,7 @@ def main():
     # Clamp absurd values (keep)
     df = df.where(col("prix_m2") > 200).where(col("prix_m2") < 20000)
 
-    agg = df.groupBy("code_commune", "annee", "mois", "type_local").agg(
+    agg = df.groupBy("code_commune", "nom_commune", "annee", "mois", "type_local").agg(
         expr("count(1)").alias("nb_ventes"),
         percentile_approx("prix_m2", 0.5, 200).alias("prix_m2_median"),
         percentile_approx("prix_m2", 0.25, 200).alias("prix_m2_p25"),
