@@ -90,3 +90,19 @@ WHERE ingest_id =
     SELECT max(ingest_id)
     FROM immo.m_price_m2_commune_month
 );
+
+CREATE OR REPLACE VIEW immo.v_price_m2_commune_month_bi AS
+SELECT
+    dep,
+    ingest_id,
+    code_commune,
+    nom_commune,
+    annee,
+    mois,
+    toDate(concat(toString(annee), '-', leftPad(toString(mois), 2, '0'), '-01')) AS mois_date,
+    type_local,
+    nb_ventes,
+    prix_m2_median,
+    prix_m2_p25,
+    prix_m2_p75
+FROM immo.m_price_m2_commune_month;
