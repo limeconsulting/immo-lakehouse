@@ -6,6 +6,7 @@
 ![GitHub stars](https://img.shields.io/github/stars/limeconsulting/immo-lakehouse)
 
 > A production-ready data product transforming French DVF data into actionable insights.
+<<<<<<< HEAD
 ---
 
 ## ⚡ What you get
@@ -19,7 +20,9 @@
 
 ## 📸 Dashboard preview
 
-_Add screenshots here (Superset dashboards)_
+![Prices evolution](docs/images/prices_evolution.jpg)
+![Top prices](docs/images/top_prices.jpg)
+![Sales volumes](docs/images/sales_volumes.jpg)
 
 ---
 
@@ -43,6 +46,61 @@ Superset (BI dashboard)
 
 ## 🚀 Key capabilities
 
+=======
+---
+
+## ⚡ What you get
+
+- 📊 Interactive dashboards (Superset)
+- 📈 Price trends over time
+- 🗺️ Multi-department analysis
+- 🔎 Filtering by commune, property type, year
+
+---
+
+## 📸 Dashboard preview
+
+## 📸 Dashboard preview
+
+![Price evolution](docs/images/prices_evolution.jpg)
+![Top prices](docs/images/top_prices.jpg)
+![Sales volumes](docs/images/sales_volumes.jpg)
+
+---
+
+## 🧱 End-to-end architecture
+
+```
+Public DVF data
+↓
+MinIO (S3 storage)
+↓
+Iceberg (table format via Nessie)
+↓
+Spark (data processing)
+↓
+ClickHouse (analytics engine)
+↓
+Superset (BI dashboard)
+```
+### Archictecture diagram
+```mermaid
+flowchart LR
+    A[Public DVF Data] --> B[Ingestion]
+    B --> C[MinIO]
+    C --> D[Spark]
+    D --> E[Iceberg]
+    E --> F[ClickHouse]
+    F --> G[Superset]
+    G --> H[Insights]
+
+    I[Nessie] -. Catalog .-> E
+```
+---
+
+## 🚀 Key capabilities
+
+>>>>>>> d154af0 (docs: upgrade README to data product positioning)
 ### Multi-department support
 
 ```bash
@@ -65,6 +123,7 @@ make apply
 ### 📊 Example use cases
 #### 🏡 Investment analysis
 ```
+<<<<<<< HEAD
 Identify high-growth communes
 Compare price per m² across regions
 ```
@@ -77,6 +136,20 @@ Detect slowdowns or spikes
 ```
 Compare departments (urban vs coastal vs rural)
 Analyze transaction volumes
+=======
+- Identify high-growth communes
+- Compare price per m² across regions
+```
+#### 🏗️ Market monitoring
+```
+- Track monthly trends
+- Detect slowdowns or spikes
+```
+#### 🧭 Territorial comparison
+```
+- Compare departments (urban vs coastal vs rural)
+- Analyze transaction volumes
+>>>>>>> d154af0 (docs: upgrade README to data product positioning)
 ```
 ### ⚙️ Quickstart
 ```bash
@@ -91,10 +164,17 @@ ClickHouse → http://localhost:8124
 ```
 ### 🔐 Enterprise-ready (by design)
 ```
+<<<<<<< HEAD
 HTTPS (via reverse proxy)
 SSO integration (OAuth / LDAP / SAML)
 RBAC (data access control)
 network isolation
+=======
+- HTTPS (via reverse proxy)
+- SSO integration (OAuth / LDAP / SAML)
+- RBAC (data access control)
+- network isolation
+>>>>>>> d154af0 (docs: upgrade README to data product positioning)
 ```
 ### 💡 Positioning
 
@@ -106,17 +186,34 @@ Data → Processing → Insight → Decision
 ```
 ### 🧭 Roadmap
 ```bash
+<<<<<<< HEAD
  dashboard UX improvements
  row-level security
  additional datasets
  deployment templates (cloud / on-prem)
+=======
+ - dashboard UX improvements
+ - row-level security
+ - additional datasets
+ - deployment templates (cloud / on-prem)
+>>>>>>> d154af0 (docs: upgrade README to data product positioning)
 ```
 ### 🧠 Philosophy
 ```
 Under-promise → over-deliver
+<<<<<<< HEAD
 ```
 ### 📬 Contact
 ```
 Lime Consulting
 https://www.lime-consulting.com
 ```
+=======
+```
+### 📬 Contact
+```
+Lime Consulting
+https://www.lime-consulting.com
+```
+
+>>>>>>> d154af0 (docs: upgrade README to data product positioning)
