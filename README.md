@@ -43,43 +43,6 @@ Superset (BI dashboard)
 
 ---
 
-## 🚀 Key capabilities
-
----
-
-## ⚡ What you get
-
-- 📊 Interactive dashboards (Superset)
-- 📈 Price trends over time
-- 🗺️ Multi-department analysis
-- 🔎 Filtering by commune, property type, year
-
----
-
-
-## 📸 Dashboard preview
-
-![Price evolution](docs/images/prices_evolution.jpg)
-![Top prices](docs/images/top_prices.jpg)
-![Sales volumes](docs/images/sales_volumes.jpg)
-
----
-
-## 🧱 End-to-end architecture
-
-```
-Public DVF data
-↓
-MinIO (S3 storage)
-↓
-Iceberg (table format via Nessie)
-↓
-Spark (data processing)
-↓
-ClickHouse (analytics engine)
-↓
-Superset (BI dashboard)
-```
 ### Archictecture diagram
 ```mermaid
 flowchart LR
