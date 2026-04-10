@@ -10,15 +10,9 @@ else
   DEPARTMENTS_RESOLVED := $(DEPARTMENTS)
 endif
 
-ENV_HOST ?= .env
-ENV_DOCKER ?= .env.docker
-include $(ENV_HOST)
+ENV ?= .env
+include $(ENV)
 export
-
-MINIO_ENDPOINT_DOCKER ?= http://minio:9000
-
-NESSIE_CONTAINER ?= $(shell docker ps -qf name=nessie | head -n 1)
-NESSIE_DATA_DIR ?= /tmp/nessie
 
 CH_CONTAINER ?= $(shell docker ps -qf name=clickhouse | head -n 1)
 SPARK_MASTER_CONTAINER ?= $(shell (docker ps -qf name=spark || true) | head -n 1)
@@ -26,10 +20,11 @@ SPARK_MASTER_CONTAINER ?= $(shell (docker ps -qf name=spark || true) | head -n 1
 SPARK_PACKAGES ?= org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2,org.apache.hadoop:hadoop-aws:3.3.6
 
 # Examples:
+#   make plan
 #   make apply
 #   make apply DEPARTMENTS=40
-#   make apply DEPARTMENTS="40 75 33"
-#   make apply DEPARTMENTS=all
+#   make apply DEPARTMENTS="33 40 75"
+#   make apply DEPARTMENTS=all YEARS="2024 2025"
 
 .PHONY: plan apply check print spark-sync \
         ingest ingest-all \
@@ -45,23 +40,23 @@ plan: check print
 	@echo "  scope: deps=$(DEPARTMENTS_RESOLVED) years=$(YEARS) ingest_id=$(INGEST_ID)"
 
 apply:
-	$(MAKE) ingest-all DEPARTMENTS="$(DEPARTMENTS)" YEARS="$(YEARS)" INGEST_ID=$(INGEST_ID)
-	$(MAKE) silver-all DEPARTMENTS="$(DEPARTMENTS)" YEARS="$(YEARS)" INGEST_ID=$(INGEST_ID)
-	$(MAKE) gold-all   DEPARTMENTS="$(DEPARTMENTS)" YEARS="$(YEARS)" INGEST_ID=$(INGEST_ID)
+	$(MAKE) ingest-all DEPARTMENTS="$(DEPARTMENTS)" YEARS="$(YEARS)" INGEST_ID="$(INGEST_ID)"
+	$(MAKE) silver-all DEPARTMENTS="$(DEPARTMENTS)" YEARS="$(YEARS)" INGEST_ID="$(INGEST_ID)"
+	$(MAKE) gold-all   DEPARTMENTS="$(DEPARTMENTS)" YEARS="$(YEARS)" INGEST_ID="$(INGEST_ID)"
 	$(MAKE) ch-init
-	$(MAKE) ch-load-all DEPARTMENTS="$(DEPARTMENTS)" YEARS="$(YEARS)" INGEST_ID=$(INGEST_ID)
+	$(MAKE) ch-load-all DEPARTMENTS="$(DEPARTMENTS)" YEARS="$(YEARS)" INGEST_ID="$(INGEST_ID)"
 	$(MAKE) validate
 
 check:
 	@command -v docker >/dev/null || (echo "docker missing" && exit 1)
 	@docker ps >/dev/null || (echo "docker not running / no permission" && exit 1)
-	@test -f $(ENV_HOST) || (echo "Missing $(ENV_HOST)" && exit 1)
-	@test -f $(ENV_DOCKER) || (echo "Missing $(ENV_DOCKER)" && exit 1)
+	@test -f $(ENV) || (echo "Missing $(ENV)" && exit 1)
 	@test -n "$(CH_CONTAINER)" || (echo "ClickHouse container not found" && exit 1)
 	@test -n "$(SPARK_MASTER_CONTAINER)" || (echo "Spark container not found" && exit 1)
 	@echo "OK"
 
 print:
+	@echo "ENV=$(ENV)"
 	@echo "INGEST_ID=$(INGEST_ID)"
 	@echo "DEPARTMENTS=$(DEPARTMENTS)"
 	@echo "DEPARTMENTS_RESOLVED=$(DEPARTMENTS_RESOLVED)"
@@ -69,6 +64,8 @@ print:
 	@echo "MINIO_ENDPOINT=$(MINIO_ENDPOINT)"
 	@echo "MINIO_ENDPOINT_DOCKER=$(MINIO_ENDPOINT_DOCKER)"
 	@echo "MINIO_BUCKET=$(MINIO_BUCKET)"
+	@echo "NESSIE_ENDPOINT=$(NESSIE_ENDPOINT)"
+	@echo "NESSIE_REF=$(NESSIE_REF)"
 	@echo "CH_CONTAINER=$(CH_CONTAINER)"
 	@echo "SPARK_MASTER_CONTAINER=$(SPARK_MASTER_CONTAINER)"
 
@@ -76,58 +73,70 @@ ingest:
 	@test -n "$(YEAR)" || (echo "Missing YEAR=YYYY" && exit 1)
 	@test -n "$(DEPARTMENT)" || (echo "Missing DEPARTMENT=XX" && exit 1)
 	python3 scripts/ingest_dvf_landES_40.py \
-	  --year "$(YEAR)" --dep "$(DEPARTMENT)" \
+	  --year "$(YEAR)" \
+	  --dep "$(DEPARTMENT)" \
 	  --ingest-id "$(INGEST_ID)" \
-	  --minio-endpoint "$(MINIO_ENDPOINT)" --access-key "$(MINIO_ACCESS_KEY)" --secret-key "$(MINIO_SECRET_KEY)" \
+	  --minio-endpoint "$(MINIO_ENDPOINT)" \
+	  --access-key "$(MINIO_ACCESS_KEY)" \
+	  --secret-key "$(MINIO_SECRET_KEY)" \
 	  --bucket "$(MINIO_BUCKET)"
 
 ingest-all:
 	@for d in $(DEPARTMENTS_RESOLVED); do \
 	  for y in $(YEARS); do \
 	    echo "== ingest $$y dep=$$d ingest=$(INGEST_ID) =="; \
-	    $(MAKE) ingest YEAR=$$y DEPARTMENT=$$d INGEST_ID=$(INGEST_ID); \
+	    $(MAKE) ingest YEAR=$$y DEPARTMENT=$$d INGEST_ID="$(INGEST_ID)"; \
 	  done; \
 	done
 
 silver: spark-sync
 	@test -n "$(YEAR)" || (echo "Missing YEAR=YYYY" && exit 1)
 	@test -n "$(DEPARTMENT)" || (echo "Missing DEPARTMENT=XX" && exit 1)
-	@set -a; source $(ENV_DOCKER); set +a; \
-	docker exec -it $(SPARK_MASTER_CONTAINER) spark-submit \
+	docker exec -i $(SPARK_MASTER_CONTAINER) spark-submit \
 	  --master spark://spark:7077 \
 	  --packages "$(SPARK_PACKAGES)" \
 	  /opt/bitnami/spark/work/spark_bronze_to_silver_iceberg.py \
-	  --minio-endpoint "$$MINIO_ENDPOINT" --access-key "$$MINIO_ACCESS_KEY" --secret-key "$$MINIO_SECRET_KEY" \
-	  --bucket "$$MINIO_BUCKET" \
-	  --nessie "$$NESSIE_ENDPOINT" --ref "$$NESSIE_REF" \
-	  --year "$(YEAR)" --dep "$(DEPARTMENT)" --ingest-id "$(INGEST_ID)" --mode overwrite_partitions
+	  --minio-endpoint "$(MINIO_ENDPOINT_DOCKER)" \
+	  --access-key "$(MINIO_ACCESS_KEY)" \
+	  --secret-key "$(MINIO_SECRET_KEY)" \
+	  --bucket "$(MINIO_BUCKET)" \
+	  --nessie "$(NESSIE_ENDPOINT)" \
+	  --ref "$(NESSIE_REF)" \
+	  --year "$(YEAR)" \
+	  --dep "$(DEPARTMENT)" \
+	  --ingest-id "$(INGEST_ID)" \
+	  --mode overwrite_partitions
 
 silver-all:
 	@for d in $(DEPARTMENTS_RESOLVED); do \
 	  for y in $(YEARS); do \
 	    echo "== silver $$y dep=$$d ingest=$(INGEST_ID) =="; \
-	    $(MAKE) silver YEAR=$$y DEPARTMENT=$$d INGEST_ID=$(INGEST_ID); \
+	    $(MAKE) silver YEAR=$$y DEPARTMENT=$$d INGEST_ID="$(INGEST_ID)"; \
 	  done; \
 	done
 
 gold: spark-sync
 	@test -n "$(YEAR)" || (echo "Missing YEAR=YYYY" && exit 1)
 	@test -n "$(DEPARTMENT)" || (echo "Missing DEPARTMENT=XX" && exit 1)
-	@set -a; source $(ENV_DOCKER); set +a; \
-	docker exec -it $(SPARK_MASTER_CONTAINER) spark-submit \
+	docker exec -i $(SPARK_MASTER_CONTAINER) spark-submit \
 	  --master spark://spark:7077 \
 	  --packages "$(SPARK_PACKAGES)" \
 	  /opt/bitnami/spark/work/spark_silver_to_gold_parquet.py \
-	  --minio-endpoint "$$MINIO_ENDPOINT" --access-key "$$MINIO_ACCESS_KEY" --secret-key "$$MINIO_SECRET_KEY" \
-	  --bucket "$$MINIO_BUCKET" \
-	  --nessie "$$NESSIE_ENDPOINT" --ref "$$NESSIE_REF" \
-	  --year "$(YEAR)" --dep "$(DEPARTMENT)" --ingest-id "$(INGEST_ID)"
+	  --minio-endpoint "$(MINIO_ENDPOINT_DOCKER)" \
+	  --access-key "$(MINIO_ACCESS_KEY)" \
+	  --secret-key "$(MINIO_SECRET_KEY)" \
+	  --bucket "$(MINIO_BUCKET)" \
+	  --nessie "$(NESSIE_ENDPOINT)" \
+	  --ref "$(NESSIE_REF)" \
+	  --year "$(YEAR)" \
+	  --dep "$(DEPARTMENT)" \
+	  --ingest-id "$(INGEST_ID)"
 
 gold-all:
 	@for d in $(DEPARTMENTS_RESOLVED); do \
 	  for y in $(YEARS); do \
 	    echo "== gold $$y dep=$$d ingest=$(INGEST_ID) =="; \
-	    $(MAKE) gold YEAR=$$y DEPARTMENT=$$d INGEST_ID=$(INGEST_ID); \
+	    $(MAKE) gold YEAR=$$y DEPARTMENT=$$d INGEST_ID="$(INGEST_ID)"; \
 	  done; \
 	done
 
@@ -155,12 +164,12 @@ ch-load-all:
 	@for d in $(DEPARTMENTS_RESOLVED); do \
 	  for y in $(YEARS); do \
 	    echo "== ch-load $$y dep=$$d ingest=$(INGEST_ID) =="; \
-	    $(MAKE) ch-load YEAR=$$y DEPARTMENT=$$d INGEST_ID=$(INGEST_ID); \
+	    $(MAKE) ch-load YEAR=$$y DEPARTMENT=$$d INGEST_ID="$(INGEST_ID)"; \
 	  done; \
 	done
 
 validate:
-	docker exec -it $(CH_CONTAINER) clickhouse-client --query \
+	docker exec -i $(CH_CONTAINER) clickhouse-client --query \
 	"SELECT dep, annee, count() FROM immo.m_price_m2_commune_month GROUP BY dep, annee ORDER BY dep, annee;"
 
 clean:
@@ -192,6 +201,7 @@ clean-ch:
 	@test -n "$(CH_CONTAINER)" || (echo "ClickHouse container not found" && exit 1)
 	@echo "Dropping ClickHouse database: immo"
 	@docker exec -i $(CH_CONTAINER) clickhouse-client --multiquery --query "\
+		DROP VIEW IF EXISTS immo.v_price_m2_commune_month_bi; \
 		DROP VIEW IF EXISTS immo.v_price_m2_commune_year_current; \
 		DROP VIEW IF EXISTS immo.v_price_m2_commune_year; \
 		DROP VIEW IF EXISTS immo.v_price_m2_commune_month; \
