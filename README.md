@@ -20,9 +20,9 @@
 
 ## 📸 Dashboard preview
 
-![Prices evolution](docs/images/prices_evolution.jpg)
-![Top prices](docs/images/top_prices.jpg)
-![Sales volumes](docs/images/sales_volumes.jpg)
+![Price evolution](docs/images/price_evolution.png)
+![Top price](docs/images/top_price.png)
+![Sales volume](docs/images/sales_volume.png)
 
 ---
 
