@@ -6,7 +6,8 @@ networks:
 volumes:
   minio-data:
   clickhouse-data:
-  nessie-data:
+  superset-db-data:
+  superset-home:
 
 services:
   minio:
@@ -16,8 +17,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "9100:9000"   # S3
-      - "9101:9001"   # console
+      - "9100:9000"
+      - "9101:9001"
     volumes:
       - minio-data:/data
     networks: [lake-net]
@@ -26,12 +27,9 @@ services:
     image: ghcr.io/projectnessie/nessie:latest
     environment:
       QUARKUS_HTTP_PORT: "19120"
-      NESSIE_VERSION_STORE_TYPE: "ROCKSDB"
-      NESSIE_ROCKSDB_DIRECTORY: "/var/lib/nessie"
+      NESSIE_VERSION_STORE_TYPE: "IN_MEMORY"
     ports:
       - "19120:19120"
-    volumes:
-      - nessie-data:/var/lib/nessie
     networks: [lake-net]
 
   spark:
@@ -40,7 +38,7 @@ services:
       SPARK_MODE: master
     ports:
       - "7077:7077"
-      - "18082:8080"  # Spark UI (18080 already used by sec-lab)
+      - "18082:8080"
     networks: [lake-net]
 
   spark-worker:
@@ -55,15 +53,62 @@ services:
     image: clickhouse/clickhouse-server:latest
     environment:
       CLICKHOUSE_USER: immo
-      CLICKHOUSE_PASSWORD: {CHANGE_ME}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
       CLICKHOUSE_DB: immo
     ports:
-      - "8124:8123"   # HTTP
-      - "9011:9000"   # Native
+      - "8124:8123"
+      - "9011:9000"
     volumes:
       - clickhouse-data:/var/lib/clickhouse
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
+    networks: [lake-net]
+
+  superset-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: superset
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: ${SUPERSET_DB_PASSWORD}
+    volumes:
+      - superset-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superset -d superset"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [lake-net]
+
+  superset:
+    build:
+      context: ./superset
+      dockerfile: Dockerfile
+    depends_on:
+      superset-db:
+        condition: service_healthy
+      clickhouse:
+        condition: service_started
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      SUPERSET_DB_PASSWORD: ${SUPERSET_DB_PASSWORD}
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+      SUPERSET_ADMIN_USERNAME: ${SUPERSET_ADMIN_USERNAME}
+      SUPERSET_ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD}
+    ports:
+      - "8088:8088"
+    volumes:
+      - superset-home:/app/superset_home
+    command: >
+      /bin/sh -c "superset db upgrade &&
+      superset fab create-admin
+      --username \"$${SUPERSET_ADMIN_USERNAME}\"
+      --firstname Superset
+      --lastname Admin
+      --email \"$${SUPERSET_ADMIN_EMAIL}\"
+      --password \"$${SUPERSET_ADMIN_PASSWORD}\" || true &&
+      superset init &&
+      /usr/bin/run-server.sh"
     networks: [lake-net]
