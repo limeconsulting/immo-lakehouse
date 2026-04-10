@@ -19,6 +19,8 @@
 
 ## 📸 Dashboard preview
 
+Example dashboards built on DVF data across multiple departments
+
 ![Price evolution](docs/images/price_evolution.png)
 ![Top price](docs/images/top_price.png)
 ![Sales volume](docs/images/sales_volume.png)
@@ -40,8 +42,6 @@ ClickHouse (analytics engine)
 ↓
 Superset (BI dashboard)
 ```
-
----
 
 ### Archictecture diagram
 ```mermaid
