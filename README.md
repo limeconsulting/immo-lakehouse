@@ -158,8 +158,6 @@ immo-lakehouse/
 │
 ├─ scripts/
 │  └─ ingest_dvf_landES_40.py
-│
-├─ spark/
 │  ├─ spark_bronze_to_silver_iceberg.py
 │  └─ spark_silver_to_gold_parquet.py
 │
