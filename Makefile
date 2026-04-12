@@ -50,6 +50,7 @@ apply:
 check:
 	@command -v docker >/dev/null || (echo "docker missing" && exit 1)
 	@docker ps >/dev/null || (echo "docker not running / no permission" && exit 1)
+	@command -v parallel >/dev/null || (echo "parallel missing — apt install parallel/yum install parallel/ dnf install parallel" && exit 1)
 	@test -f $(ENV) || (echo "Missing $(ENV)" && exit 1)
 	@test -n "$(CH_CONTAINER)" || (echo "ClickHouse container not found" && exit 1)
 	@test -n "$(SPARK_MASTER_CONTAINER)" || (echo "Spark container not found" && exit 1)
@@ -88,7 +89,7 @@ ingest-all: logs
 	parallel \
         --jobs 4 \
         --halt soon,fail=1 \
-        --joblog logs/ingest-{1}.log \
+        --joblog logs/ingest-$(INGEST_ID).log \
         $(MAKE) ingest YEAR={1} DEPARTMENT={2} INGEST_ID="$(INGEST_ID)" \
         ::: $(YEARS) \
         ::: $(DEPARTMENTS_RESOLVED)
