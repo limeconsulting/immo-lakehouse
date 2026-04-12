@@ -69,10 +69,13 @@ print:
 	@echo "CH_CONTAINER=$(CH_CONTAINER)"
 	@echo "SPARK_MASTER_CONTAINER=$(SPARK_MASTER_CONTAINER)"
 
+logs: 
+	mkdir -p logs
+
 ingest:
 	@test -n "$(YEAR)" || (echo "Missing YEAR=YYYY" && exit 1)
 	@test -n "$(DEPARTMENT)" || (echo "Missing DEPARTMENT=XX" && exit 1)
-	python3 scripts/ingest_dvf_landES_40.py \
+	python3 scripts/ingest_dvf.py \
 	  --year "$(YEAR)" \
 	  --dep "$(DEPARTMENT)" \
 	  --ingest-id "$(INGEST_ID)" \
@@ -81,13 +84,14 @@ ingest:
 	  --secret-key "$(MINIO_SECRET_KEY)" \
 	  --bucket "$(MINIO_BUCKET)"
 
-ingest-all:
-	@for d in $(DEPARTMENTS_RESOLVED); do \
-	  for y in $(YEARS); do \
-	    echo "== ingest $$y dep=$$d ingest=$(INGEST_ID) =="; \
-	    $(MAKE) ingest YEAR=$$y DEPARTMENT=$$d INGEST_ID="$(INGEST_ID)"; \
-	  done; \
-	done
+ingest-all: logs
+	parallel \
+        --jobs 4 \
+        --halt soon,fail=1 \
+        --joblog logs/ingest-{1}.log \
+        $(MAKE) ingest YEAR={1} DEPARTMENT={2} INGEST_ID="$(INGEST_ID)" \
+        ::: $(YEARS) \
+        ::: $(DEPARTMENTS_RESOLVED)
 
 silver: spark-sync
 	@test -n "$(YEAR)" || (echo "Missing YEAR=YYYY" && exit 1)
